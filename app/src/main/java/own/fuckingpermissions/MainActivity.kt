@@ -40,8 +40,36 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    val FilesPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/FuckYou/"
-    val PalFilesPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/FuckYou/pal/"
+    ///val FilesPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/FuckYou/"
+    ///val PalFilesPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/FuckYou/pal/"
+
+/*
+
+We have to fucking switch to one of those dirs..
+Thank you to stupid fuckers at google.
+I totally fucking hate you!
+
+public static String DIRECTORY_MUSIC = "Music";
+public static String DIRECTORY_ALARMS = "Alarms";
+public static String DIRECTORY_NOTIFICATIONS = "Notifications";
+public static String DIRECTORY_PICTURES = "Pictures";
+public static String DIRECTORY_MOVIES = "Movies";
+public static String DIRECTORY_DOWNLOADS = "Download";
+public static String DIRECTORY_DCIM = "DCIM";
+public static String DIRECTORY_DOCUMENTS = "Documents";
+
+Hope this damned app still work on OLD Shitty phones......
+
+//File directory = cw.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+//File file = new File(directory, "something" + ".MP3");
+
+*/
+
+
+    val FilesPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + "/FuckYou/"
+    val PalFilesPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + "/FuckYou/pal/"
+
+
     val LocationPerms = 5001
     val BackgroundLocationPerms = 5002
     val StoragePerms = 5003
@@ -61,11 +89,8 @@ class MainActivity : AppCompatActivity() {
 
         runme()
 
-
-
         val text = findViewById<TextView>(R.id.text)
         text.setText("Fuck you android permissions!!!!!!   complicated shit!")
-
 
 
 
@@ -165,17 +190,6 @@ class MainActivity : AppCompatActivity() {
         //file access permission functions moved to WX.kt
         if(SDK_INT >= 30) {
             Log.d("fuck-you", "SDK is 30 or above")
-            if(!Environment.isExternalStorageManager()) {
-                Log.d("fuck-you", "Trying to ask for access to sd card")
-                Toast.makeText(applicationContext,
-                    "This app need access to your phone memory or SD Card to make files and write files (/wX/ on your phone memory or sd card)\nThe all file access settings will open. Make sure to toggle it on to enable all files access for this app to function fully.\n You need to restart the app after you enabled the all files access for this app in the settings.\n",
-                    Toast.LENGTH_LONG
-                ).show()
-                val intent = Intent(ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                startActivity(intent)
-                //force restart :/
-                exitProcess(0)
-            }
         } else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
             {
@@ -183,6 +197,8 @@ class MainActivity : AppCompatActivity() {
                 requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), StoragePerms)
             }
         }
+
+
 
         checkfiles(R.drawable.headingbug, "headingbug.png")
         checkfiles(R.drawable.star_cyan, "star_cyan.png")
