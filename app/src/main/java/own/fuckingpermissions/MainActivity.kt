@@ -19,6 +19,7 @@ import android.graphics.BitmapFactory
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.os.Environment
+import android.provider.Settings
 import android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
 import android.util.Log
 import android.view.Menu
@@ -29,6 +30,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.material.snackbar.Snackbar
+import com.markodevcic.peko.PermissionRequester
+import com.markodevcic.peko.PermissionResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import own.fuckingpermissions.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileOutputStream
@@ -40,8 +46,8 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    ///val FilesPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/FuckYou/"
-    ///val PalFilesPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/FuckYou/pal/"
+    val FilesPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/FuckYou/"
+    val PalFilesPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/FuckYou/pal/"
 
 /*
 
@@ -66,13 +72,12 @@ Hope this damned app still work on OLD Shitty phones......
 */
 
 
-    val FilesPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + "/FuckYou/"
-    val PalFilesPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + "/FuckYou/pal/"
+    //val FilesPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + "/FuckYou/"
+    //val PalFilesPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath() + "/FuckYou/pal/"
 
 
-    val LocationPerms = 5001
-    val BackgroundLocationPerms = 5002
-    val StoragePerms = 5003
+    val BackgroundLocationPerms = 5000
+
 
     private lateinit var binding: ActivityMainBinding
 
@@ -85,9 +90,8 @@ Hope this damned app still work on OLD Shitty phones......
 
 
         //asking for stupid fucking permissions.....
-        showLocationPermsDialogue()
+        askPerms()
 
-        runme()
 
         val text = findViewById<TextView>(R.id.text)
         text.setText("Fuck you android permissions!!!!!!   complicated shit!")
@@ -117,20 +121,48 @@ Hope this damned app still work on OLD Shitty phones......
     }
 
 
+    private fun askPerms() {
+        PermissionRequester.initialize(applicationContext)
+        val requester = PermissionRequester.instance()
+        if(SDK_INT >= 30) {
+            CoroutineScope(Dispatchers.Main).launch {
+                requester.request(
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ).collect { p ->
+                    when (p) {
+                        is PermissionResult.Granted -> {
+                            askExternalStorageManager()
+                            backgroundLocationPerms() }
+                        else -> {}
+                    }
 
-    private fun showLocationPermsDialogue() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            Log.i("fuck-you", "Location Perms are already granted :)")
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), LocationPerms)
-                Log.i("fuck-you", "Asking for Location Perms")
+                }
             }
+        } else {
+            CoroutineScope(Dispatchers.Main).launch {
+                requester.request(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ).collect { p ->
+                    when (p) {
+                        is PermissionResult.Granted -> {
+                            runme()
+                            backgroundLocationPerms()
+                        }
+                        else -> {}
+                    }
+                }
+            }
+
         }
+
+
     }
 
 
-    private fun showBGLocationPermsDialogue() {
+
+
+    private fun backgroundLocationPerms() {
         if(SDK_INT >= 29) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             Log.i("fuck-you", "Background Location Perms are already granted :)")
@@ -143,63 +175,26 @@ Hope this damned app still work on OLD Shitty phones......
         }
     }
 
-    private fun showFileWritePermsDialogue() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            Log.i("fuck-you", "Storage Perms are already granted :)")
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), StoragePerms)
-                Log.i("fuck-you", "Asking for Storage Perms")
-            }
-        }
-    }
 
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when (requestCode) {
-            StoragePerms -> {
-                showBGLocationPermsDialogue()
-            }
-        }
-    }
-
-
-    /*
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        when (requestCode) {
-            StoragePerms -> if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                //ask for bg location perms...
-                showBGLocationPermsDialogue()
+    fun askExternalStorageManager() {
+        if(SDK_INT >= 30) {
+            if (Environment.isExternalStorageManager()) {
+                Log.i("fuck-you", "ExternalStorageManager Perms are already granted :)")
+                runme()
             } else {
-                // Permission Denied
+                Toast.makeText(applicationContext, "This app need access to your phone memory or SD Card to make files and write files (/wX/ on your phone memory or sd card)\nThe all file access settings will open. Make sure to toggle it on to enable all files access for this app to function fully.\n You need to restart the app after you enabled the all files access for this app in the settings.\n", Toast.LENGTH_LONG).show()
+                val permissionIntent = Intent(ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                startActivity(permissionIntent)
+                Thread.sleep(10000) //sleep for 10 secs and force restart
+                exitProcess(0)
             }
-            else -> super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         }
     }
-*/
+
 
     fun runme() {
 
         Log.d("fuck-you", "runme()")
-
-        //FUCK YOU GOOGLE!!!!!!  They kept changing their code to "secure" the storage   FUCK YOU
-        //my ass will be at your new HQ offices and chewing you out for what you did to me.  I fucking hate companies that censor.
-        //I will make you pay my fucking income!!!!  FUCK YOU!!!!
-        //Google company Execs need metal pipes in their asses for breaking their promoise not to censor!!!!!
-        //file access permission functions moved to WX.kt
-        if(SDK_INT >= 30) {
-            Log.d("fuck-you", "SDK is 30 or above")
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-            {
-                Log.i("fuck-you", "Asking for Storage Perms for older android")
-                requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), StoragePerms)
-            }
-        }
-
-
-
         checkfiles(R.drawable.headingbug, "headingbug.png")
         checkfiles(R.drawable.star_cyan, "star_cyan.png")
         checkfiles(R.drawable.location, "location.png")
@@ -268,36 +263,40 @@ Hope this damned app still work on OLD Shitty phones......
 
     fun checkfiles(drawable: Int, filename: String) {
         Log.d("fuck-you", "running files check on " + FilesPath)
-        val dir = File(FilesPath)
-        if (!dir.exists()) {
-            Log.d("fuck-you", "making dir")
-            dir.mkdirs()
-        }
+        try {
+            val dir = File(FilesPath)
+            if (!dir.exists()) {
+                Log.d("fuck-you", "making dir")
+                dir.mkdirs()
+            }
 
-        var file = File(FilesPath + filename)
-        var fileExists = file.exists()
-        if(!fileExists)
-        {
-            //need to copy files!
-            Log.d("fuck-you", filename + " does not exist.")
-            var bitmap: Bitmap = BitmapFactory.decodeResource(resources, drawable)
-            saveBitmapToFile(filename, bitmap)
+            var file = File(FilesPath + filename)
+            var fileExists = file.exists()
+            if (!fileExists) {
+                //need to copy files!
+                Log.d("fuck-you", filename + " does not exist.")
+                var bitmap: Bitmap = BitmapFactory.decodeResource(resources, drawable)
+                saveBitmapToFile(filename, bitmap)
 
-        } else {
-            Log.d("fuck-you", filename + " are there!")
+            } else {
+                Log.d("fuck-you", filename + " are there!")
+            }
+        } catch (e: Exception) {
+            Log.d("fuck-you", "checkfiles - caught Exception!")
+            e.printStackTrace()
         }
     }
 
     fun saveBitmapToFile(fileName: String, bm: Bitmap) {
-        val file = File(FilesPath, fileName)
         try {
+            val file = File(FilesPath, fileName)
             val out = FileOutputStream(file)
             bm.compress(Bitmap.CompressFormat.PNG, 100, out)
             out.flush()
             out.close()
             Log.d("fuck-you", fileName + " copied!")
         } catch (e: Exception) {
-            Log.d("fuck-you", "checkfiles Exception!")
+            Log.d("fuck-you", "saveBitmapToFile - caught Exception!")
             e.printStackTrace()
         }
 
@@ -307,30 +306,39 @@ Hope this damned app still work on OLD Shitty phones......
     //check colortable files and copy if any missing//
     fun checkpalfiles(resourceId: Int, filename: String) {
         Log.d("fuck-you", "running files check on " + PalFilesPath)
-        val dir = File(PalFilesPath)
-        if (!dir.exists()) {
-            Log.d("fuck-you", "making dir")
-            dir.mkdirs()
-        }
+        try {
+            val dir = File(PalFilesPath)
+            if (!dir.exists()) {
+                Log.d("fuck-you", "making dir")
+                dir.mkdirs()
+            }
 
-        var file = File(PalFilesPath + filename)
-        var fileExists = file.exists()
-        if(!fileExists)
-        {
-            //need to copy files!
-            Log.d("fuck-you", filename + " does not exist.")
-            saveRawToFile(filename, resourceId)
-        } else {
-            Log.d("fuck-you", filename + " are there!")
+            var file = File(PalFilesPath + filename)
+            var fileExists = file.exists()
+            if (!fileExists) {
+                //need to copy files!
+                Log.d("fuck-you", filename + " does not exist.")
+                saveRawToFile(filename, resourceId)
+            } else {
+                Log.d("fuck-you", filename + " are there!")
+            }
+        } catch (e: Exception) {
+            Log.d("fuck-you", "checkpalfiles - caught Exception!")
+            e.printStackTrace()
         }
     }
 
     private fun saveRawToFile(fileName: String, resourceId: Int) {
+        try {
         val dir = PalFilesPath
         var ins: InputStream = resources.openRawResource(resourceId)
         var content = ins.readBytes().toString(Charset.defaultCharset())
         File("$dir/$fileName").printWriter().use {
             it.println(content)
+        }
+        } catch (e: Exception) {
+            Log.d("fuck-you", "saveRawToFile - caught Exception!")
+            e.printStackTrace()
         }
     }
 
